@@ -1,44 +1,218 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
+<html lang="id">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Geolocation</title>
-  </head>
-  <body>
-    <h3>Nama :</h3>
-    <h3>NIM :</h3>
+    <title>Geolocation MapTiler Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            /* Latar belakang gradasi pink pastel ke kuning pastel */
+            background: linear-gradient(135deg, #FDE2E4 0%, #FFFACD 100%);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); /* Bayangan lebih halus */
+        }
+        .header { 
+            text-align: center;
+            border-bottom: 2px dashed #FFB6C1; /* Garis batas pink pastel */
+            padding-bottom: 20px; 
+            margin-bottom: 25px; 
+        }
+        .header h2 { 
+            margin: 0 0 5px 0; 
+            color: #2d3748; 
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .header p.desc {
+            margin: 0;
+            color: #718096;
+            font-size: 14px;
+        }
+        .header p.credit {
+            margin: 8px 0 0 0;
+            color: #FF9AA2; /* Warna pink aksen */
+            font-size: 12px;
+            font-weight: 600;
+            font-style: italic;
+        }
+        .search-box { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 25px; 
+        }
+        input { 
+            flex: 1; 
+            padding: 12px 15px; 
+            border: 1px solid #FFD1DC; 
+            border-radius: 8px; 
+            outline: none; 
+            font-family: inherit; 
+            font-size: 14px;
+        }
+        input:focus {
+            border-color: #FF9AA2;
+            box-shadow: 0 0 0 3px rgba(255, 154, 162, 0.2);
+        }
+        button { 
+            background: #FF9AA2; /* Tombol pink pastel */
+            color: white; 
+            border: none; 
+            padding: 12px 20px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-family: inherit; 
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            background: #FF848F; 
+            transform: translateY(-1px);
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+        }
+        .data-item { 
+            background: #FFFDF5; /* Latar item sedikit kuning/cream */
+            padding: 15px; 
+            border-radius: 8px; 
+            border-left: 4px solid #FF9AA2; /* Garis aksen pink */
+            transition: transform 0.2s ease;
+        }
+        .data-item:hover {
+            transform: scale(1.02);
+        }
+        .data-item span { 
+            display: block; 
+            font-size: 11px; 
+            color: #A0AEC0; 
+            text-transform: uppercase; 
+            font-weight: 600; 
+            margin-bottom: 4px;
+        }
+        .data-item strong { 
+            font-size: 15px; 
+            color: #4A5568; 
+            word-break: break-word;
+        }
+        .full-width { grid-column: span 2; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <!-- Judul Aplikasi -->
+        <div class="header">
+            <h2>Geocoding Explorer</h2>
+            <p class="desc">Cari data wilayah dan titik koordinat</p>
+            <p class="credit">made by Rara Andini Batrisyia</p>
+        </div>
+        
+        <!-- Input Lokasi -->
+        <div class="search-box">
+            <input type="text" id="lokasiInput" placeholder="Masukkan lokasi (cth: Kasihan, Yogyakarta)..." value="Yogyakarta">
+            <button onclick="fetchData()">Cari</button>
+        </div>
 
-    <p>
-        kota :
-        <span id="lokasi"></span><br>
-    </p>
+        <!-- Tampilan Data -->
+        <div class="grid">
+            <div class="data-item full-width">
+                <span>Lokasi (Matching Text)</span>
+                <strong id="val-lokasi">-</strong>
+            </div>
+            <div class="data-item">
+                <span>Negara</span>
+                <strong id="val-negara">-</strong>
+            </div>
+            <div class="data-item">
+                <span>Provinsi</span>
+                <strong id="val-provinsi">-</strong>
+            </div>
+            <div class="data-item full-width">
+                <span>Kecamatan / Kabupaten / Area</span>
+                <strong id="val-kecamatan">-</strong>
+            </div>
+            <div class="data-item">
+                <span>Longitude (X)</span>
+                <strong id="val-lon">-</strong>
+            </div>
+            <div class="data-item">
+                <span>Latitude (Y)</span>
+                <strong id="val-lat">-</strong>
+            </div>
+        </div>
+    </div>
 
-    <hr>
+    <script>
+        document.getElementById("lokasiInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                fetchData();
+            }
+        });
 
-    <p>
-        Koordinat : 
-        <span id="negara"></span>
-     </p>
-    
-     <script>
+        async function fetchData() {
+            const lokasi = document.getElementById('lokasiInput').value;
+            if (!lokasi) return;
 
-        fetch("/api/lokasi")
-          .then((response) => response.json())
-          .then((data) => {
+            const apiKey = "TmW3n2IbOKaZxkghOoYB";
+            const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(lokasi)}.json?key=${apiKey}`;
 
-            console.log(data);
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
 
-            document.getElementById("lokasi").innerHTML = data.kota;
+                if (data.features && data.features.length > 0) {
+                    const feature = data.features[0];
+                    const koordinat = feature.geometry.coordinates;
 
-            document.getElementById("negara").innerHTML = data.koordinat;
-            
-          })
+                    let negara = "-", provinsi = "-", kecamatan = "-";
+                    
+                    if (feature.context) {
+                        const findCtx = (key) => feature.context.find(c => c.id.includes(key))?.text;
+                        
+                        negara = findCtx('country') || "-";
+                        provinsi = findCtx('region') || findCtx('province') || "-";
+                        kecamatan = findCtx('locality') || 
+                                    findCtx('subregion') || 
+                                    findCtx('county') || 
+                                    findCtx('municipality') || 
+                                    findCtx('neighbourhood') || 
+                                    "-";
+                    }
 
-            .catch((error) => {
+                    document.getElementById('val-lokasi').innerText = feature.text || lokasi;
+                    document.getElementById('val-negara').innerText = negara;
+                    document.getElementById('val-provinsi').innerText = provinsi;
+                    document.getElementById('val-kecamatan').innerText = kecamatan;
+                    document.getElementById('val-lon').innerText = koordinat[0];
+                    document.getElementById('val-lat').innerText = koordinat[1];
+                } else {
+                    alert("Lokasi tidak ditemukan! Coba kata kunci yang lebih spesifik.");
+                }
+            } catch (error) {
                 console.error(error);
-            });
-        </script>
+                alert("Terjadi kesalahan saat menghubungi API MapTiler.");
+            }
+        }
 
-        </body>
-        </html>
+        window.onload = fetchData;
+    </script>
+</body>
+</html>
